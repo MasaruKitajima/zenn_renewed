@@ -54,6 +54,48 @@ pi@pi:~ $ sudo apt-get update
 pi@pi:~ $ sudo apt-get upgrade
 ```
 
+### うぎゃぁ…
+
+```bash
+Some packages could not be installed. This may mean that you have
+requested an impossible situation or if you are using the unstable
+distribution that some required packages have not yet been created
+or been moved out of Incoming.
+The following information may help to resolve the situation:
+
+The following packages have unmet dependencies:
+ vlc-bin : Depends: libvlc-bin (= 3.0.16-1+rpi1+rpt2) but 3.0.17.4-0+deb11u1+rpi1 is to be installed
+ vlc-plugin-base : Depends: vlc-data (= 3.0.16-1+rpi1+rpt2) but 3.0.17.4-0+deb11u1+rpi1 is to be installed
+ vlc-plugin-skins2 : Depends: vlc-plugin-qt (= 3.0.17.4-0+deb11u1+rpi1) but 3.0.16-1+rpi1+rpt2 is to be installed
+E: Broken packages
+```
+
+なってこった！エラーが出てるがね。`VLC`なんて使わないんだけど、解決しないと先に進めないよね…
+
+```bash
+pi@pi:~ $ sudo apt-get dist-upgrade
+104 upgraded, 2 newly installed, 0 to remove and 0 not upgraded.
+Need to get 244 MB of archives.
+After this operation, 11.5 MB of additional disk space will be used.
+```
+
+いや、どーする？って言われてもやらんきゃどーしよーもないんでしょ？***Y***です！
+
+その後に、念のために「リリース情報が変わったヤツはアップデートしてもいいで」と言う意味で
+
+```bash
+pi@pi:~ $ sudo apt-get update --allow-releaseinfo-change
+```
+
+を実行します。そして再起動します。
+
+```bash
+pi@pi:~ $ sudo reboot
+```
+
+しばらく待ってネットワーク越しに見られるようになったら次に進めます。
+
+
 **要注意**
 
 色々なサイトに初期設定についての記述がありますが`sudo rpi-update`なる記述は**非推奨**ですので、しないでくださいね。
