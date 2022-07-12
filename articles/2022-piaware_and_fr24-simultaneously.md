@@ -21,6 +21,8 @@ published: false
 
 ## 自分で環境構築
 
+###　下準備
+
 ```bash
 # SSHでラズパイへログイン
 $ ssh pi
@@ -52,44 +54,6 @@ passwd: password updated successfully
 # これはラズパイを初期化する時のお作法
 masaru@feeder:~ $ sudo apt-get update
 masaru@feeder:~ $ sudo apt-get upgrade
-```
-
-### うぎゃぁ…
-
-```bash
-Some packages could not be installed. This may mean that you have
-requested an impossible situation or if you are using the unstable
-distribution that some required packages have not yet been created
-or been moved out of Incoming.
-The following information may help to resolve the situation:
-
-The following packages have unmet dependencies:
- vlc-bin : Depends: libvlc-bin (= 3.0.16-1+rpi1+rpt2) but 3.0.17.4-0+deb11u1+rpi1 is to be installed
- vlc-plugin-base : Depends: vlc-data (= 3.0.16-1+rpi1+rpt2) but 3.0.17.4-0+deb11u1+rpi1 is to be installed
- vlc-plugin-skins2 : Depends: vlc-plugin-qt (= 3.0.17.4-0+deb11u1+rpi1) but 3.0.16-1+rpi1+rpt2 is to be installed
-E: Broken packages
-```
-
-なってこった！エラーが出てるがね。`VLC`なんて使わないんだけど、解決しないと先に進めないよね…
-
-```bash
-masaru@feeder:~ $ sudo apt-get dist-upgrade
-104 upgraded, 2 newly installed, 0 to remove and 0 not upgraded.
-Need to get 244 MB of archives.
-After this operation, 11.5 MB of additional disk space will be used.
-```
-
-いや、どーする？って言われてもやらんきゃどーしよーもないんでしょ？***Y***です！
-
-その後に、念のために「リリース情報が変わったヤツはアップデートしてもいいで」と言う意味で
-
-```bash
-masaru@feeder:~ $ sudo apt-get update --allow-releaseinfo-change
-```
-
-を実行します。そして再起動します。
-
-```bash
 masaru@feeder:~ $ sudo reboot
 ```
 
@@ -107,6 +71,160 @@ masaru@feeder:~ $ sudo reboot
 今オッチャンも*iOS 16.2 beta 2, iPad OS 16.2 beta 2, watchOS 9 beta 2*で難儀してますしね💦でも、さすがにメインマシンで*macOS 13 beta 2*を試す程愚かではありません。
 
 では元に戻って…
+
+### IPアドレスを固定する
+
+多くの方がRouterで固定IPをラズパイのMACアドレスに振ってるから大丈夫！と仰ってますが、確実性を求めるならラズパイでも設定すべきです。
+
+```powershell
+masaru@feeder:~ $ sudo vi /etc/dhcpcd.conf
+```
+
+最下段あたりに
+
+```terraform
+interface wlan0
+static ip_address=192.168.1.100/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1
+```
+
+#### Ethernetの時
+
+```shell
+masaru@pi:~ $ sudo systemctl stop wpa_supplicant
+masaru@pi:~ $ sudo systemctl disable wpa_supplicant
+masaru@pi:~ $ sudo systemctl restart dhcpcd
+```
+
+
+
+記述したら
+
+```shell
+masaru@pi:~ $ sudo reboot
+```
+
+でシステムを再起動します。再起動したら念のために`ifconfig`で確認しておきます。
+
+### 時間は合ってる？
+
+念のために日時設定が合っているかを確認します。
+
+```powershell
+masaru@pi:~ $ date
+2022年  7月 10日 日曜日 13:32:19 JST
+```
+
+あれ？一時間遅れてる。
+
+えーっと…NTPとは同期しているかな？
+
+```powershell
+masaru@pi:~ $ timedatectl status
+Local time: 日 2022-07-10 13:33:38 JST
+Universal time: 日 2022-07-10 04:33:38 UTC
+RTC time: n/a
+Time zone: Asia/Tokyo (JST, +0900)
+System clock synchronized: no
+NTP service: active
+RTC in local TZ: no
+```
+
+んー…あれ？NTP serviceはactiveだけど同期してるかどうか判らん…
+
+```powershell
+masaru@pi:~ $ timedatectl show -a
+Timezone=Asia/Tokyo
+LocalRTC=no
+CanNTP=yes
+NTP=yes
+NTPSynchronized=no
+TimeUSec=Sun 2022-07-10 14:28:44 JST
+RTCTimeUSec=
+```
+
+ありゃ？`NTPSynchronized=no`になってるじゃん。
+
+#### RTC
+
+余談ですが、*RTC*は*Real Time Clock*の頭字語で別名ハードウェアクロックと言います。
+
+通常のPCには元々基盤に組み込まれています。だから再起動の度に時間合わせの必要がありません。更にオフラインでNTPサーバーを使えなくても時刻が保持されるのは*RTC*のお陰です。
+
+ですが、ラズパイには初期状態では存在していません。ネットから切り離した環境で使う方は*RTC*モジュールを取りつけなければ、時間の管理ができませんし、再起動の度に日時設定をしなくてはなりません。
+
+### 私にRTCは不要
+
+今回の目的は`ads-b`のデータフィードですから、インターネットに常時接続されているのが前提です。
+
+ですから、今から修正すべきはNTPサーバーを参照するように設定ファイルに記述するだけです。
+
+```shell
+masaru@pi:~ $ sudo vi /etc/systemd/timesyncd.conf
+```
+
+```terraform
+[Time]
+#NTP=
+#FallbackNTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org 2.debian.pool.ntp.org 3.debian.pool.ntp.org
+```
+
+コメントアウトされてるがね。
+
+折角日本にはJPNICTが公開している日本のNTPの元締めたる[ntp.nict.jp](ntp.nict.jp)さんがいますのに…
+
+その他に著名なものに[INTERNET MULTIFEED](https://www.mfeed.ad.jp/)と言う企業さんが*Public NTP*を無償で提供してくださっています。
+
+> [ntp.nict.jp](ntp.nict.jp)の方が正確なんじゃない？
+
+と言う疑問をお持ちになる方が多いのに驚きますが、JPNICTのNTPサーバーは*Stratum1*ですので、他の**正式な**NTPサービスは*Stratum2*以下であって、*Stratum2*以下の階層のサービスはそれぞれ*Stratum*が一つ上のサーバーを参照する仕組みになっています。
+
+つまり最終的にはJPNICTのNTPサービスが提供する情報と基本的には同一である事が担保されています。
+
+基本的と言ったのは、そのNTPサーバーと上位のNTPサーバーとの通信時のトラフィックの影響を考慮する必要があるからです。と言っても秒単位で誤差が出るNTPサーバーは聴いた事がありませんが。
+
+さて話を戻すと[INTERNET MULTIFEED](https://www.mfeed.ad.jp/)さんが提供してくれているNTPサービス[ntp.jst.mfeed.ad.jp](ntp.jst.mfeed.ad.jp)は*Stratum2*であり、且つJPNICTとの間は専用回線による接続である為にトラフィックの影響を考慮する必要が無いので高精度であると癒えます。
+
+また*Stratum1*のJPNICTのNTPに端末がアクセスするのは余り推奨される行為ではありません。
+
+と、言う事でNTPサーバーには*ntp.jst.mfeed.ad.jp*を設定します。NTPサーバーを定義するのだから不要と言えば不要なのですが、念のために*FallbackNTP*には[time.google.com](time.google.com)を設定しておきます。
+
+```shell
+[Time]
+# NTPは並記できるので、一応元締めも定義しておく
+NTP=ntp.jst.mfeed.ad.jp ntp.nict.jp
+FallbackNTP=time.google.com
+```
+
+今回は設定ファイルを書き換えていますので単にリスタートするだけでは反映されません。
+
+```shell
+# 設定ファイルの再読込
+masaru@pi:~ $ sudo systemctl daemon-reload
+# リスタートする
+masaru@pi:~ $ sudo systemctl restart systemd-timesyncd.service
+# サービスの確認
+masaru@pi:~ $ systemctl status systemd-timesyncd
+● systemd-timesyncd.service - Network Time Synchronization
+     Loaded: loaded (/lib/systemd/system/systemd-timesyncd.service; enabled; ve>
+     Active: active (running) since Sun 2022-07-10 14:13:46 JST; 30s ago
+       Docs: man:systemd-timesyncd.service(8)
+   Main PID: 2551 (systemd-timesyn)
+     Status: "Idle."
+      Tasks: 2 (limit: 1598)
+        CPU: 458ms
+     CGroup: /system.slice/systemd-timesyncd.service
+             └─2551 /lib/systemd/systemd-timesyncd
+
+ 7月 10 14:13:46 pi systemd[1]: Starting Network Time Synchronization...
+ 7月 10 14:13:46 pi systemd[1]: Started Network Time Synchronization.
+```
+
+よしよし。最終確認します。
+
+```shell
+
 
 ## FlightAwareにフィードする
 
