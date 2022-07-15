@@ -80,3 +80,25 @@ No E4000 tuner found, aborting.
 **予告（違う）**
 
 TODO: M1 macにSDR(Software Defined Radio)でrtl_tcp対応のものをインストールすべし！
+
+## dump1090-faのインストール
+
+インストールしたいのは`dump1090-fa`ですが、これは`piaware`の中に含まれています。ですのでまず`piaware`をもらってきて、その中から`dump1090-fa`だけをインストールします。
+
+```bash
+masaru@pi:~ $ wget https://ja.flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_7.2_all.deb
+masaru@pi:~ $ sudo dpkg -i piaware-repository_7.2_all.deb
+masaru@pi:~ $ sudo apt-get update
+# 間違えて`sudo apt-get install piaware`でpiawareを丸ごとインストールしないように注意ね。
+masaru@pi:~ $ sudo apt-get install dump1090-fa
+以下のパッケージが自動でインストールされましたが、もう必要とされていません:
+  libfuse2
+これを削除するには 'sudo apt autoremove' を利用してください。
+# いらんもんは削除して空き容量を増やすべし
+masaru@pi:~ $ sudo apt autoremove
+```
+
+### dump1090-faの設定
+
+```bash
+```
