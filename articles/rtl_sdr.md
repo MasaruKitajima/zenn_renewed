@@ -102,3 +102,39 @@ masaru@pi:~ $ sudo apt autoremove
 
 ```bash
 ```
+
+## 別海
+
+
+```bash
+masaru@pi:~ $ lsusb
+Bus 001 Device 004: ID 0bda:2838 Realtek Semiconductor Corp. RTL2838 DVB-T
+Bus 001 Device 005: ID 0424:7800 Microchip Technology, Inc. (formerly SMSC)
+Bus 001 Device 003: ID 0424:2514 Microchip Technology, Inc. (formerly SMSC) USB 2.0 Hub
+Bus 001 Device 002: ID 0424:2514 Microchip Technology, Inc. (formerly SMSC) USB 2.0 Hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+```
+
+USBのドングルが*Bus 001*に確認できました。*rtl_sdr*系のツールで再確認します。
+
+```bash
+masaru@pi:~/rtl-sdr $ rtl_eeprom -d 0
+Found 1 device(s):
+  0:  Generic RTL2832U OEM
+
+Using device 0: Generic RTL2832U OEM
+Found Rafael Micro R820T tuner
+
+Current configuration:
+__________________________________________
+Vendor ID:		0x0bda
+Product ID:		0x2838
+Manufacturer:		Realtek
+Product:		RTL2838UHIDIR
+Serial number:		00000001
+Serial number enabled:	yes
+IR endpoint enabled:	yes
+Remote wakeup enabled:	no
+__________________________________________
+```
+
