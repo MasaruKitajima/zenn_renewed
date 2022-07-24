@@ -229,7 +229,7 @@ masaru@pi:~/rtl-sdr/build $ cd ..
 masaru@pi:~/rtl-sdr $ sudo cp rtl-sdr.rules /etc/udev/rules.d/
 ```
 
-# とりあえずテスト
+#### とりあえずテスト
 
 ```bash
 # その前に再起動っすね。
@@ -250,10 +250,106 @@ Failed to open rtlsdr device #0.
 masaru@pi:~ $ sudo vi /etc/modprobe.d/rtl-tcp-blacklist.conf
 ```
 
-```confblacklist dvb_usb_rtl28xxu
+```conf
+blacklist dvb_usb_rtl28xxu
 blacklist rtl2830
 blacklist dvb_usb_v2
 blacklist dvb_core
 ```
 
-もう一度再起動しなくては…
+もう一度再起動しなくては…そして再テスト
+
+```bash
+masaru@pi:~ $ lsusb
+Bus 001 Device 008: ID 0bda:2838 Realtek Semiconductor Corp. RTL2838 DVB-T
+Bus 001 Device 004: ID 046d:c069 Logitech, Inc. M-U0007 [Corded Mouse M500]
+Bus 001 Device 005: ID 1c4f:0002 SiGma Micro Keyboard TRACER Gamma Ivory
+Bus 001 Device 007: ID 0424:7800 Microchip Technology, Inc. (formerly SMSC)
+Bus 001 Device 003: ID 0424:2514 Microchip Technology, Inc. (formerly SMSC) USB 2.0 Hub
+Bus 001 Device 002: ID 0424:2514 Microchip Technology, Inc. (formerly SMSC) USB 2.0 Hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Found 1 device(s):
+  0:  Realtek, RTL2838UHIDIR, SN: 00000001
+
+Using device 0: Generic RTL2832U OEM
+Found Rafael Micro R820T tuner
+Supported gain values (29): 0.0 0.9 1.4 2.7 3.7 7.7 8.7 12.5 14.4 15.7 16.6 19.7 20.7 22.9 25.4 28.0 29.7 32.8 33.8 36.4 37.2 38.6 40.2 42.1 43.4 43.9 44.5 48.0 49.6
+[R82XX] PLL not locked!
+Sampling at 2048000 S/s.
+No E4000 tuner found, aborting.
+```
+
+認識成功です。続いて*dump1090-fa*のインストールです。
+
+## dump1090-faのインストール
+
+目的の*ADS-B*信号は1090MHzで送信されていますが、受信したデータをデコードしてフィード可能な形式に変換するのが*dump1090*の役割です。
+
+今も`fr24feed`をインストールすると`dump1090-mutability`がインストールされるんですが、[GitHubのレポジトリ](https://github.com/mutability/dump1090)には
+
+> ## Old dump1090-mutability fork
+>
+> dump1090-mutability is no longer maintained; please don't use it for new installs.
+> For new installs and ongoing development, try dump1090-fa, which is available at [https://github.com/flightaware/dump1090](https://github.com/flightaware/dump1090)
+>
+> The historical master branch is available in the unmaintained branch.
+
+と書かれています。flightawareの*dump1090*を使えと言っておりますが、だったら*piaware*を取得して*dump1090-fa*だけインストールするのが良いのでは？
+
+### piawareの取得とdump1090-fa
+
+まずは最新版を確認する為に[flightawareのインストール](https://ja.flightaware.com/adsb/piaware/install)ページを訪れてみます。
+
+> Download and install the PiAware repository package, which tells your Pi's package manager (apt) how to find FlightAware's software packages in addition to the packages provided by Raspbian.
+>
+> For Raspberry Pis running on Raspbian Bullseye OS, execute the following commands from the command line:
+>
+> ```bash
+> wget https://ja.flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_7.2_all.deb
+sudo dpkg -i piaware-repository_7.2_all.deb
+> ```
+
+と言う事なので7.2が最新版ですのでこれを入手します。
+
+```bash
+masaru@pi:~ $ wget https://ja.flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_7.2_all.deb
+masaru@pi:~ $ sudo dpkg -i piaware-repository_7.2_all.deb
+Selecting previously unselected package piaware-repository.
+(Reading database ... 45761 files and directories currently installed.)
+Preparing to unpack piaware-repository_7.2_all.deb ...
+Unpacking piaware-repository (7.2) ...
+Setting up piaware-repository (7.2) ...
+masaru@pi:~ $ sudo apt-get update
+# ここでflightwareのページではまるっとインストールする
+# 手順ですので、注意してくださいね。
+masaru@pi:~ $ sudo apt-get install dump1090-fa
+# 中略
+Created symlink /etc/systemd/system/default.target.wants/dump1090-fa.service → /lib/systemd/system/dump1090-fa.service.
+# これでdump1090-faがsystemserviceに登録された事が判ります。
+# 終了したとか成功したとか言ってくれないので、プロンプトを待ちます。
+```
+
+プロンプトが表示されたら*dump1090-fa*の状態を確認します。
+
+```bash
+masaru@pi:~ $ systemctl status dump1090-fa
+● dump1090-fa.service - dump1090 ADS-B receiver (FlightAware customization)
+     Loaded: loaded (/lib/systemd/system/dump1090-fa.service; enabled; vendor p>
+     Active: active (running) since Sun 2022-07-24 09:53:38 JST; 3min 55s ago
+       Docs: https://flightaware.com/adsb/piaware/
+   Main PID: 1943 (dump1090-fa)
+      Tasks: 3 (limit: 1598)
+        CPU: 1min 20.934s
+     CGroup: /system.slice/dump1090-fa.service
+             └─1943 /usr/bin/dump1090-fa --quiet --device-type rtlsdr --gain 60>
+
+Jul 24 09:53:38 pi systemd[1]: Started dump1090 ADS-B receiver (FlightAware cus>
+Jul 24 09:53:38 pi dump1090-fa[1943]: Sun Jul 24 09:53:38 2022 JST  dump1090-fa>
+Jul 24 09:53:39 pi dump1090-fa[1943]: rtlsdr: using device #0: Generic RTL2832U>
+Jul 24 09:53:39 pi dump1090-fa[1943]: Found Rafael Micro R820T tuner
+Jul 24 09:53:39 pi dump1090-fa[1943]: rtlsdr: tuner gain set to about 58.6 dB (>
+Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: using 50% duty cycle
+Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: enabled adaptive gain control w>
+Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: enabled dynamic range control, >
+Jul 24 09:53:49 pi dump1090-fa[1943]: adaptive: reached upper gain limit, halti>
+```
