@@ -326,6 +326,7 @@ masaru@pi:~ $ sudo apt-get install dump1090-fa
 # 中略
 Created symlink /etc/systemd/system/default.target.wants/dump1090-fa.service → /lib/systemd/system/dump1090-fa.service.
 # これでdump1090-faがsystemserviceに登録された事が判ります。
+# つまり自動起動の設定をする必要が無いんですね。
 # 終了したとか成功したとか言ってくれないので、プロンプトを待ちます。
 ```
 
@@ -353,3 +354,13 @@ Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: enabled adaptive gain control w>
 Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: enabled dynamic range control, >
 Jul 24 09:53:49 pi dump1090-fa[1943]: adaptive: reached upper gain limit, halti>
 ```
+
+さて*dump1090-fa*の設定ファイル`/usr/lib/systemd/system/dump1090-fa.service`を覗いて見ると
+
+```conf
+ExecStart=/usr/share/dump1090-fa/start-dump1090-fa --write-json %t/dump1090-fa
+```
+
+なる行があります。これは*dump1090-fa*がログを`/run/dump1090-fa/`に出力している事を意味します。
+
+パソコンのHDDやSSDならともかくSDカードに頻繁に書き書きされるのは物理的寿命を縮めるので、RAM領域を作成して、そちらにログを出力させてみます。
