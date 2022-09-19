@@ -36,6 +36,33 @@ Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
 permitted by applicable law.
 Last login: Fri Jun 24 15:22:54 2022 from 192.168.1.101
 
+# 初期状態だと、ラズパイさんのvimがvi互換モードになっているので
+# Insertモードでカーソルキーが使えないのは不便なので治しておきます。
+# ついでに他の設定も楽になりたいからしておきます。
+## 下の表を参照してね。
+
+masaru@feeder:~ $ vi .vimrc
+```
+
+```conf
+set nocompatible
+set backspace=indent,eol,start
+set autoindent
+set smartindent
+set tabstop=2
+set shiftwidth=2
+```
+
+|項目|意味|
+|:--|:--|
+|set nocompatible|vi互換モード停止|
+|set backspace=indent,eol,start|バックスペースの挙動|
+|set autoindent|自動インデント|
+|set smartindent|C言語の構文に則った自動インデント|
+|set tabstop=2|タブ幅をスペース2つに|
+|set shiftwidth=2|自動インデント幅を2つに|
+
+```bash
 # 後々楽したいので、aliasを設定する
 masaru@feeder:~ $ vi .bashrc
   alias mkdir='mkdir -p'
@@ -143,7 +170,7 @@ wlan0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 
 ```powershell
 masaru@pi:~ $ date
-Fri 22 Jul 16:46:49 JST 2022
+Mon 19 Sep 15:35:32 JST 2022
 ```
 
 一応NTPとの同期を確認
@@ -183,184 +210,97 @@ RTCTimeUSec=
 
 なので*RTC*は不要です。
 
-## rtl_sdrのインストール
+## PiAwareのインストールと設定
 
-普通にFlightAwareとFlightRadar24にフィードするだけなら*rtl_sdr*は不要なんです。と、言うのは*rtl_sdr*は*SDR(Sofrware Defined Radio)*、つまり*rtl_sdr*をサーバーにしてネットワーク越しSDRレシーバーでラジオを聴く為のものだからです。
+### PiAwareから
 
-ですが*rtl_sdr*をサーバーにしてにMacのSDRレシーバーで、電波強度や受信ゲインの確認や調整ができるので後で便利だろう…と。
-
-### 環境構築
-
-```bash
-masaru@pi:~ $ sudo apt-get update
-# 導入（コンパイル・リンク）に必要なソフトウェアをインストールしていきます。
-masaru@pi:~ $ sudo apt-get install git
-masaru@pi:~ $ sudo apt-get install cmake
-masaru@pi:~ $ sudo apt-get install libusb-1.0-0-dev
-masaru@pi:~ $ sudo apt-get install build-essential
-masaru@pi:~ $ sudo apt-get install pkg-config
-masaru@pi:~ $ sudo apt-get install libtool
-```
-
-### rtl_sdrのインストール
-
-```bash
-masaru@pi:~ $ git clone git://git.osmocom.org/rtl-sdr.git
-masaru@pi:~ $ cd rtl-sdr
-masaru@pi:~/rtl-sdr $ mkdir build
-masaru@pi:~/rtl-sdr $ cd build
-masaru@pi:~/rtl-sdr/build $ cmake ../
-# 中略
--- Build files have been written to: /home/masaru/rtl-sdr/build
-masaru@pi:~/rtl-sdr/build $ make
-Scanning dependencies of target rtlsdr
-[  3%] Building C object src/CMakeFiles/rtlsdr.dir/librtlsdr.c.o
-# 中略
-[ 21%] Linking C shared library librtlsdr.so
-[ 21%] Built target rtlsdr
-# 中略
-Scanning dependencies of target rtl_biast
-[ 96%] Building C object src/CMakeFiles/rtl_biast.dir/rtl_biast.c.o
-[100%] Linking C executable rtl_biast
-[100%] Built target rtl_biast
-masaru@pi:~/rtl-sdr/build $ sudo make install
-masaru@pi:~/rtl-sdr/build $ sudo ldconfig
-masaru@pi:~/rtl-sdr/build $ cd ..
-masaru@pi:~/rtl-sdr $ sudo cp rtl-sdr.rules /etc/udev/rules.d/
-```
-
-#### とりあえずテスト
-
-```bash
-# その前に再起動っすね。
-masaru@pi:~/rtl-sdr $ sudo reboot
-masaru@pi:~ $ rtl_test -t
-Found 1 device(s):
-  0:  Realtek, RTL2838UHIDIR, SN: 00000001
-
-Using device 0: Generic RTL2832U OEM
-
-Kernel driver is active, or device is claimed by second instance of librtlsdr.
-In the first case, please either detach or blacklist the kernel module
-(dvb_usb_rtl28xxu), or enable automatic detaching at compile time.
-
-usb_claim_interface error -6
-Failed to open rtlsdr device #0.
-# ブラックリストファイルを作成
-masaru@pi:~ $ sudo vi /etc/modprobe.d/rtl-tcp-blacklist.conf
-```
-
-```conf
-blacklist dvb_usb_rtl28xxu
-blacklist rtl2830
-blacklist dvb_usb_v2
-blacklist dvb_core
-```
-
-もう一度再起動しなくては…そして再テスト
-
-```bash
-masaru@pi:~ $ lsusb
-Bus 001 Device 008: ID 0bda:2838 Realtek Semiconductor Corp. RTL2838 DVB-T
-Bus 001 Device 004: ID 046d:c069 Logitech, Inc. M-U0007 [Corded Mouse M500]
-Bus 001 Device 005: ID 1c4f:0002 SiGma Micro Keyboard TRACER Gamma Ivory
-Bus 001 Device 007: ID 0424:7800 Microchip Technology, Inc. (formerly SMSC)
-Bus 001 Device 003: ID 0424:2514 Microchip Technology, Inc. (formerly SMSC) USB 2.0 Hub
-Bus 001 Device 002: ID 0424:2514 Microchip Technology, Inc. (formerly SMSC) USB 2.0 Hub
-Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
-Found 1 device(s):
-  0:  Realtek, RTL2838UHIDIR, SN: 00000001
-
-Using device 0: Generic RTL2832U OEM
-Found Rafael Micro R820T tuner
-Supported gain values (29): 0.0 0.9 1.4 2.7 3.7 7.7 8.7 12.5 14.4 15.7 16.6 19.7 20.7 22.9 25.4 28.0 29.7 32.8 33.8 36.4 37.2 38.6 40.2 42.1 43.4 43.9 44.5 48.0 49.6
-[R82XX] PLL not locked!
-Sampling at 2048000 S/s.
-No E4000 tuner found, aborting.
-```
-
-認識成功です。続いて*dump1090-fa*のインストールです。
-
-## dump1090-faのインストール
-
-目的の*ADS-B*信号は1090MHzで送信されていますが、受信したデータをデコードしてフィード可能な形式に変換するのが*dump1090*の役割です。
-
-今も`fr24feed`をインストールすると`dump1090-mutability`がインストールされるんですが、[GitHubのレポジトリ](https://github.com/mutability/dump1090)には
-
-> ## Old dump1090-mutability fork
->
-> dump1090-mutability is no longer maintained; please don't use it for new installs.
-> For new installs and ongoing development, try dump1090-fa, which is available at [https://github.com/flightaware/dump1090](https://github.com/flightaware/dump1090)
->
-> The historical master branch is available in the unmaintained branch.
-
-と書かれています。flightawareの*dump1090*を使えと言っておりますが、だったら*piaware*を取得して*dump1090-fa*だけインストールするのが良いのでは？
-
-### piawareの取得とdump1090-fa
-
-まずは最新版を確認する為に[flightawareのインストール](https://ja.flightaware.com/adsb/piaware/install)ページを訪れてみます。
-
-> Download and install the PiAware repository package, which tells your Pi's package manager (apt) how to find FlightAware's software packages in addition to the packages provided by Raspbian.
->
-> For Raspberry Pis running on Raspbian Bullseye OS, execute the following commands from the command line:
->
-> ```bash
-> wget https://ja.flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_7.2_all.deb
-sudo dpkg -i piaware-repository_7.2_all.deb
-> ```
-
-と言う事なので7.2が最新版ですのでこれを入手します。
+[公式](https://ja.flightaware.com/adsb/piaware/install)に従って最新のPiAwareをインストールします。
 
 ```bash
 masaru@pi:~ $ wget https://ja.flightaware.com/adsb/piaware/files/packages/pool/piaware/p/piaware-support/piaware-repository_7.2_all.deb
 masaru@pi:~ $ sudo dpkg -i piaware-repository_7.2_all.deb
-Selecting previously unselected package piaware-repository.
-(Reading database ... 45761 files and directories currently installed.)
-Preparing to unpack piaware-repository_7.2_all.deb ...
-Unpacking piaware-repository (7.2) ...
-Setting up piaware-repository (7.2) ...
+# 念のためにaptをアップデートしてからPiAwareをインストール
 masaru@pi:~ $ sudo apt-get update
-# ここでflightwareのページではまるっとインストールする
-# 手順ですので、注意してくださいね。
-masaru@pi:~ $ sudo apt-get install dump1090-fa
-# 中略
-Created symlink /etc/systemd/system/default.target.wants/dump1090-fa.service → /lib/systemd/system/dump1090-fa.service.
-# これでdump1090-faがsystemserviceに登録された事が判ります。
-# つまり自動起動の設定をする必要が無いんですね。
-# 終了したとか成功したとか言ってくれないので、プロンプトを待ちます。
+masaru@pi:~ $ sudo apt-get install piaware
+# PiAwareの自動アップデートと手動アップデートを有効化する
+masaru@pi:~ $ sudo piaware-config allow-auto-updates yes
+masaru@pi:~ $ sudo piaware-config allow-manual-updates yes
 ```
 
-プロンプトが表示されたら*dump1090-fa*の状態を確認します。
+### 次にdump1090を
 
 ```bash
-masaru@pi:~ $ systemctl status dump1090-fa
-● dump1090-fa.service - dump1090 ADS-B receiver (FlightAware customization)
-     Loaded: loaded (/lib/systemd/system/dump1090-fa.service; enabled; vendor p>
-     Active: active (running) since Sun 2022-07-24 09:53:38 JST; 3min 55s ago
+masaru@pi:~ $ sudo apt-get install dump1090-fa
+# dump978=978MHzは主に小型機がエアロマリタイム用にアメリカで使っていました
+# 近年はセスナやヘリなどの事故の多発を受けて日本でも試験導入をしています。
+# 入れなくても通常のADS-Bのフィードには影響はありませんので飛ばしても構わないです。
+masaru@pi:~ $ sudo apt-get install dump978-fa
+masaru@pi:~ $ sudo reboot
+```
+
+### 起動したら状態を見てみる
+
+```bash
+masaru@pi:~ $ systemctl status piaware
+● piaware.service - FlightAware ADS-B uploader
+     Loaded: loaded (/lib/systemd/system/piaware.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2022-09-19 16:00:58 JST; 1min 26s ago
        Docs: https://flightaware.com/adsb/piaware/
-   Main PID: 1943 (dump1090-fa)
+   Main PID: 1684 (piaware)
       Tasks: 3 (limit: 1598)
-        CPU: 1min 20.934s
-     CGroup: /system.slice/dump1090-fa.service
-             └─1943 /usr/bin/dump1090-fa --quiet --device-type rtlsdr --gain 60>
+        CPU: 2.893s
+     CGroup: /system.slice/piaware.service
+             ├─1684 /usr/bin/piaware -p /run/piaware/piaware.pid -plainlog -statusfile /run/piaware/status.json
+             └─1697 /usr/lib/piaware/helpers/faup1090 --net-bo-ipaddr localhost --net-bo-port 30005 --stdout
 
-Jul 24 09:53:38 pi systemd[1]: Started dump1090 ADS-B receiver (FlightAware cus>
-Jul 24 09:53:38 pi dump1090-fa[1943]: Sun Jul 24 09:53:38 2022 JST  dump1090-fa>
-Jul 24 09:53:39 pi dump1090-fa[1943]: rtlsdr: using device #0: Generic RTL2832U>
-Jul 24 09:53:39 pi dump1090-fa[1943]: Found Rafael Micro R820T tuner
-Jul 24 09:53:39 pi dump1090-fa[1943]: rtlsdr: tuner gain set to about 58.6 dB (>
-Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: using 50% duty cycle
-Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: enabled adaptive gain control w>
-Jul 24 09:53:39 pi dump1090-fa[1943]: adaptive: enabled dynamic range control, >
-Jul 24 09:53:49 pi dump1090-fa[1943]: adaptive: reached upper gain limit, halti>
+Sep 19 16:01:02 pi sudo[1695]:  piaware : PWD=/ ; USER=root ; COMMAND=/bin/netstat --program --tcp --wide --all --numeric
+Sep 19 16:01:02 pi sudo[1695]: pam_unix(sudo:session): session opened for user root(uid=0) by (uid=999)
+Sep 19 16:01:02 pi sudo[1695]: pam_unix(sudo:session): session closed for user root
+Sep 19 16:01:02 pi piaware[1684]: ADS-B data program 'dump1090-fa' is listening on port 30005, so far so good
+Sep 19 16:01:02 pi piaware[1684]: Starting faup1090: /usr/lib/piaware/helpers/faup1090 --net-bo-ipaddr localhost --net-bo-port 30005 --stdout
+Sep 19 16:01:02 pi piaware[1684]: Started faup1090 (pid 1697) to connect to dump1090-fa
+Sep 19 16:01:02 pi piaware[1684]: UAT support disabled by local configuration setting: uat-receiver-type
+Sep 19 15:55:30 pi piaware[679]: logged in to FlightAware as user guest
+Sep 19 15:55:30 pi piaware[679]: my feeder ID is 037aa382-7983-4f39-8674-309f5e348abd
+Sep 19 16:01:33 pi piaware[1684]: 0 msgs recv'd from dump1090-fa; 0 msgs sent to FlightAware
 ```
 
-さて*dump1090-fa*の設定ファイル`/usr/lib/systemd/system/dump1090-fa.service`を覗いて見ると
+細かい設定は後にするとして…これが初回の[FlightAware](https://ja.flightaware.com/)へのfeedでしたら[このページ](https://ja.flightaware.com/adsb/piaware/install)の**6 FlightAware.comでPiAwareクライアントを申し込む**以降の手順に従ってください。
 
-```conf
-ExecStart=/usr/share/dump1090-fa/start-dump1090-fa --write-json %t/dump1090-fa
+私は以前にfeedしていてfeeder IDを持っていますので、そのIDに書き換えます。
+
+```bash
+masaru@pi:~ $ sudo piaware-config feeder-id 5baxxxxx-1yya-4zz4-abcd-1a2bcd3d4e5f6d
+# 書き換えたらPiAwareを再起動します。
+masaru@pi:~ $ sudo systemctl restart piaware
+# 少し待ってから確認します。
+masaru@pi:~ $ systemctl status piaware
+● piaware.service - FlightAware ADS-B uploader
+     Loaded: loaded (/lib/systemd/system/piaware.service; enabled; vendor preset: enabled)
+     Active: active (running) since Mon 2022-09-19 16:00:58 JST; 11min ago
+       Docs: https://flightaware.com/adsb/piaware/
+   Main PID: 1684 (piaware)
+      Tasks: 3 (limit: 1598)
+        CPU: 4.746s
+     CGroup: /system.slice/piaware.service
+             ├─1684 /usr/bin/piaware -p /run/piaware/piaware.pid -plainlog -statusfile /run/piaware/status.json
+             └─1697 /usr/lib/piaware/helpers/faup1090 --net-bo-ipaddr localhost --net-bo-port 30005 --stdout
+
+Sep 19 16:01:02 pi piaware[1684]: Starting faup1090: /usr/lib/piaware/helpers/faup1090 --net-bo-ipaddr localhost --net-bo-port 30005 --stdout
+Sep 19 16:01:02 pi piaware[1684]: Started faup1090 (pid 1697) to connect to dump1090-fa
+Sep 19 16:01:02 pi piaware[1684]: UAT support disabled by local configuration setting: uat-receiver-type
+Sep 19 16:01:03 pi piaware[1684]: logged in to FlightAware as user hogefuga
+Sep 19 16:01:03 pi piaware[1684]: my feeder ID is 5baxxxxx-1yya-4zz4-abcd-1a2bcd3d4e5f6d
+Sep 19 16:01:33 pi piaware[1684]: 0 msgs recv'd from dump1090-fa; 0 msgs sent to FlightAware
+Sep 19 16:06:33 pi piaware[1684]: 0 msgs recv'd from dump1090-fa (0 in last 5m); 0 msgs sent to FlightAware
+Sep 19 16:08:35 pi piaware[1684]: piaware received a message from dump1090-fa!
+Sep 19 16:10:08 pi piaware[1684]: piaware has successfully sent several msgs to FlightAware!
+Sep 19 16:11:33 pi piaware[1684]: 40 msgs recv'd from dump1090-fa (40 in last 5m); 40 msgs sent to FlightAware
 ```
 
-なる行があります。これは*dump1090-fa*がログを`/run/dump1090-fa/`に出力している事を意味します。
+と、言う感じで`user`ログインも`feeder-id`も正しい事を確認します。
 
-パソコンのHDDやSSDならともかくSDカードに頻繁に書き書きされるのは物理的寿命を縮めるので、RAM領域を作成して、そちらにログを出力させてみます。
+## 確認
+
+後日ね！
+
