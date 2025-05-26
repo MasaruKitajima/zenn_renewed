@@ -1,0 +1,8 @@
+title: "言葉の意味は判ってから使おうよ。"
+summary: "最近は言葉の意味を知らずに、誤用している人が沢山います。そして、その誤用している人から学ぶ人は当然誤用する訳で…こりゃイカンですよね？"
+topics: ["term", "abbreviation", "acronym", "definition", "mwaning"]
+published: false
+price: 0 # 有料の場合200〜5000
+# 本に含めるチャプターを順番に並べましょう
+chapters:
+  - introduction
